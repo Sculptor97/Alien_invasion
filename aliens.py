@@ -1,6 +1,7 @@
 import sys
 import pygame as pg
 from settings import Settings
+from ship import Ship
 
 class AlienInvasion:
     """Class to manage all assets and behaviour of Alien Invasion"""
@@ -10,10 +11,10 @@ class AlienInvasion:
 
         #initialize settings
         self.settings = Settings()
-
         self.clock = pg.time.Clock()
         self.screen = pg.display.set_mode((self.settings.screen_width, self.settings.screen_height))
         pg.display.set_caption('Alien Invasion')
+        self.ship = Ship(self)
         
 
         
@@ -29,6 +30,7 @@ class AlienInvasion:
             self.screen.fill(self.settings.bg_color)
 
             #Render game objects here
+            self.ship.blitme()
 
 
             pg.display.flip()
