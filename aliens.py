@@ -2,6 +2,7 @@ import sys
 import pygame as pg
 from settings import Settings
 from ship import Ship
+from bullet import Bullet
 
 
 class AlienInvasion:
@@ -18,6 +19,8 @@ class AlienInvasion:
             (self.settings.screen_width, self.settings.screen_height))
         pg.display.set_caption('Alien Invasion')
         self.ship = Ship(self)
+        self.bullets = pg.sprite.Group()
+
 
     def run_game(self):
         while True:
@@ -50,6 +53,14 @@ class AlienInvasion:
             self.ship.moving_down = True
         if event.key == pg.K_q:
             sys.exit()
+        if event.key == pg.K_SPACE:
+            self._fire_bullet()
+
+    def _fire_bullet(self):
+        #check number of bullets in group before creating
+        if len(self.bullets) < self.settings.bullet_limit:
+            new_bullet = Bullet(self)
+            self.bullets.add(new_bullet)
 
     def _handle_keyup(self, event):
         if event.key == pg.K_RIGHT:
@@ -66,9 +77,16 @@ class AlienInvasion:
         self.screen.fill(self.settings.bg_color)
         # updates go here
         self.ship.update()
+        self.bullets.update()
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+        
 
     def _render_objects(self):
         """draw game objects"""
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
         self.ship.blitme()
 
 
