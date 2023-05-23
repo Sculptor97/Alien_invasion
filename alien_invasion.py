@@ -1,0 +1,193 @@
+import sys
+import pygame as pg
+from time import sleep
+from settings import Settings
+from ship import Ship
+from bullet import Bullet
+from alien import Alien
+from random import randint
+from game_stats import GameStats
+
+
+class AlienInvasion:
+    """Class to manage all assets and behaviour of Alien Invasion"""
+
+    def __init__(self) -> None:
+        # make pygame resources available
+        pg.init()
+
+        # initialize settings
+        self.settings = Settings()
+        self.clock = pg.time.Clock()
+        self.screen = pg.display.set_mode(
+            (self.settings.screen_width, self.settings.screen_height))
+        pg.display.set_caption('Alien Invasion')
+        self.stats = GameStats(self)
+        self.ship = Ship(self)
+        self.bullets = pg.sprite.Group()
+        self.aliens = pg.sprite.Group()
+        self._create_fleet()
+        self.game_active = True
+
+    def run_game(self):
+        while True:
+            self._check_events()
+            if self.game_active:
+                self._update_changes()
+            self._render_objects()
+
+            # make new changes visible
+            pg.display.flip()
+            self.clock.tick(self.settings.fps)
+
+    def _check_events(self):
+        """polls for user input"""
+        for event in pg.event.get():
+            if event.type == pg.QUIT:
+                sys.exit()
+            elif event.type == pg.KEYDOWN:
+                self._handle_keydown(event)
+            elif event.type == pg.KEYUP:
+                self._handle_keyup(event)
+
+    def _handle_keydown(self, event):
+        if event.key == pg.K_RIGHT:
+            self.ship.moving_right = True
+        if event.key == pg.K_LEFT:
+            self.ship.moving_left = True
+        if event.key == pg.K_UP:
+            self.ship.moving_up = True
+        if event.key == pg.K_DOWN:
+            self.ship.moving_down = True
+        if event.key == pg.K_q:
+            sys.exit()
+        if event.key == pg.K_SPACE:
+            self._fire_bullet()
+
+    def _fire_bullet(self):
+        # check number of bullets in group before creating
+        if len(self.bullets) < self.settings.bullet_limit:
+            new_bullet = Bullet(self)
+            self.bullets.add(new_bullet)
+
+    def _create_fleet(self):
+        """create a fleet of aliens"""
+        # create alien instance
+        alien = Alien(self)
+        alien_width, alien_height = alien.rect.size
+        current_x, current_y = alien_width, alien_height
+        while current_y < (self.settings.screen_height -8*alien_height):
+            while current_x < (self.settings.screen_width - 2*alien_width):
+                self._create_alien(current_x, current_y)
+                current_x += 2*alien_width
+            #finished a row, reset x-value and increment y
+            current_x = alien_width
+            current_y += 2*alien_height
+
+    def _create_alien(self, x_position, y_position):
+        # create new alien
+        new_alien = Alien(self)
+        new_alien.x = x_position
+        new_alien.rect.x = x_position + self._ran()
+        new_alien.rect.y= y_position + self._ran()
+        self.aliens.add(new_alien)
+
+    def _ran(self):
+         """returns a random number to offset alien positions"""
+         ran = randint(self.settings.start, self.settings.end)
+         return ran
+    
+    def _check_fleet_edges(self):
+        """check if alien is on either side of the screen"""
+        for alien in self.aliens.sprites():
+            if alien.check_edges():
+                self._change_fleet_direction()
+                break
+    def _change_fleet_direction(self):
+        """drop the entire fleet and change its direction"""
+        for alien in self.aliens.sprites():
+            alien.rect.y += self.settings.fleet_drop_speed
+        self.settings.fleet_direction *= -1
+
+
+    def _handle_keyup(self, event):
+        if event.key == pg.K_RIGHT:
+            self.ship.moving_right = False
+        if event.key == pg.K_LEFT:
+            self.ship.moving_left = False
+        if event.key == pg.K_UP:
+            self.ship.moving_up = False
+        if event.key == pg.K_DOWN:
+            self.ship.moving_down = False
+
+    def _update_changes(self):
+        """update game objects"""
+        self.screen.fill(self.settings.bg_color)
+        # updates go here
+        self.ship.update()
+        self._update_bullets()
+        self._update_aliens()
+
+    def _update_bullets(self):
+        """updates bullet position and removes old ones"""
+        #update position
+        self.bullets.update()
+        #remove old bullets
+        for bullet in self.bullets.copy():
+            if bullet.rect.bottom <= 0:
+                self.bullets.remove(bullet)
+        
+        #check for collisions between bullet and aliens
+        self._check_alien_bullet_collisions()
+         
+    def _check_alien_bullet_collisions(self):
+
+        collisions = pg.sprite.groupcollide(self.aliens, self.bullets, True, True)
+        #no more aliens?
+        if not self.aliens:
+            self.bullets.empty()
+            self._create_fleet()
+
+    def _check_alien_bottom(self):
+        for alien in self.aliens.sprites():
+            if alien.rect.bottom >= self.settings.screen_height:
+                self._ship_hit()
+                break 
+
+    def _ship_hit(self):
+        """Respond to ship hits"""
+        if self.stats.ships_left > 0:
+            #decrement number of ships
+            self.stats.ships_left -= 1
+
+            #destroy any remaining bullets and aliens
+            self.aliens.empty()
+            self.bullets.empty()
+            #create a new fleet and center ship
+            self._create_fleet()
+            self.ship.center_ship()
+            #pause
+            sleep(0.5)
+        else:
+            self.game_active = False
+
+    def _update_aliens(self):
+        """check if alien is at either edge then update position of aliens in the fleet"""
+        self._check_fleet_edges()
+        self.aliens.update()
+        #check for alien-ship collisions
+        if pg.sprite.spritecollideany(self.ship, self.aliens):
+             self._ship_hit()
+        self._check_alien_bottom()
+
+    def _render_objects(self):
+        """draw game objects"""
+        for bullet in self.bullets.sprites():
+            bullet.draw_bullet()
+        self.ship.blitme()
+        self.aliens.draw(self.screen)
+
+
+if __name__ == '__main__':
+    ai = AlienInvasion()
+    ai.run_game()
