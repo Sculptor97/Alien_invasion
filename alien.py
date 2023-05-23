@@ -18,7 +18,7 @@ class Alien(Sprite):
 
         #place alien at top-left corner with spacing equal its
         #width and height
-        self.rect.x = self.width
+        self.rect.x = self.width 
         self.rect.y = self.height
 
         #store x-value as float

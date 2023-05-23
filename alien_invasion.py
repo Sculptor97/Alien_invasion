@@ -7,6 +7,12 @@ from bullet import Bullet
 from alien import Alien
 from random import randint
 from game_stats import GameStats
+from button import Button
+from scoreboard import Scoreboard
+from pathlib import Path
+import json
+
+
 
 
 class AlienInvasion:
@@ -27,7 +33,9 @@ class AlienInvasion:
         self.bullets = pg.sprite.Group()
         self.aliens = pg.sprite.Group()
         self._create_fleet()
-        self.game_active = True
+        self.game_active = False
+        self.play_button = Button(self,'Play')
+        self.sb = Scoreboard(self)
 
     def run_game(self):
         while True:
@@ -44,11 +52,42 @@ class AlienInvasion:
         """polls for user input"""
         for event in pg.event.get():
             if event.type == pg.QUIT:
+                self._store_high_score()
                 sys.exit()
             elif event.type == pg.KEYDOWN:
                 self._handle_keydown(event)
             elif event.type == pg.KEYUP:
                 self._handle_keyup(event)
+            elif event.type == pg.MOUSEBUTTONDOWN:
+                mouse_pos = pg.mouse.get_pos()
+                self._check_play_button(mouse_pos)
+
+    def _store_high_score(self):
+        """save high score to file"""
+        path = Path('stats/high_score.txt')
+        content = json.dumps(self.stats.high_score)
+        path.write_text(content)
+
+    def _check_play_button(self, mouse_pos):
+        """Checks if mouse is focused on the playbutton"""
+        button_clicked = self.play_button.rect.collidepoint(mouse_pos)
+        if button_clicked and not self.game_active:
+            #reset the game statistics
+            self.settings.initialize_dynamic_settings()
+            self.stats.reset_stats()
+            self.sb.prep_score()
+            self.sb.prep_level()
+            self.sb.prep_ship()
+            self.game_active = True
+
+            #clear the screen
+            self.bullets.empty()
+            self.aliens.empty()
+            #create new fleet
+            self._create_fleet()
+            self.ship.center_ship()
+            #hide the mouse cursor
+            pg.mouse.set_visible(False)
 
     def _handle_keydown(self, event):
         if event.key == pg.K_RIGHT:
@@ -60,6 +99,7 @@ class AlienInvasion:
         if event.key == pg.K_DOWN:
             self.ship.moving_down = True
         if event.key == pg.K_q:
+            self._store_high_score()
             sys.exit()
         if event.key == pg.K_SPACE:
             self._fire_bullet()
@@ -142,11 +182,22 @@ class AlienInvasion:
          
     def _check_alien_bullet_collisions(self):
 
-        collisions = pg.sprite.groupcollide(self.aliens, self.bullets, True, True)
+        collisions = pg.sprite.groupcollide(self.bullets, self.aliens, True, True)
         #no more aliens?
         if not self.aliens:
             self.bullets.empty()
             self._create_fleet()
+            self.settings.increase_speed()
+
+            #increase level
+            self.stats.level += 1
+            self.sb.prep_level()
+        #increment score if alien's been hit
+        if collisions:
+            for aliens in collisions.values():
+                self.stats.score += self.settings.alien_points*len(aliens)
+            self.sb.prep_score()
+            self.sb.check_high_score()
 
     def _check_alien_bottom(self):
         for alien in self.aliens.sprites():
@@ -159,6 +210,7 @@ class AlienInvasion:
         if self.stats.ships_left > 0:
             #decrement number of ships
             self.stats.ships_left -= 1
+            self.sb.prep_ship()
 
             #destroy any remaining bullets and aliens
             self.aliens.empty()
@@ -170,6 +222,7 @@ class AlienInvasion:
             sleep(0.5)
         else:
             self.game_active = False
+            pg.mouse.set_visible(True)
 
     def _update_aliens(self):
         """check if alien is at either edge then update position of aliens in the fleet"""
@@ -186,6 +239,12 @@ class AlienInvasion:
             bullet.draw_bullet()
         self.ship.blitme()
         self.aliens.draw(self.screen)
+        #show scoreboard
+        self.sb.show_score()
+        #draw button to screen if game not active
+        if not self.game_active:
+            self.play_button.draw_button()
+
 
 
 if __name__ == '__main__':

@@ -1,9 +1,11 @@
 import pygame as pg
+from pygame.sprite import Sprite
 
 
-class Ship:
+class Ship(Sprite):
     """Class to handle ship properties and behaviour"""
     def __init__(self, ai_game) -> None:
+        super().__init__()
         #get surface 
         self.screen = ai_game.screen
         self.screen_rect = self.screen.get_rect()
