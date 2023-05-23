@@ -11,6 +11,9 @@ from button import Button
 from scoreboard import Scoreboard
 from pathlib import Path
 import json
+import sound_effects as se
+
+
 
 
 
@@ -25,8 +28,8 @@ class AlienInvasion:
         # initialize settings
         self.settings = Settings()
         self.clock = pg.time.Clock()
-        self.screen = pg.display.set_mode(
-            (self.settings.screen_width, self.settings.screen_height))
+        self.screen = pg.display.set_mode((0, 0), pg.FULLSCREEN)
+        self.settings.screen_width, self.settings.screen_height = self.screen.get_rect().size
         pg.display.set_caption('Alien Invasion')
         self.stats = GameStats(self)
         self.ship = Ship(self)
@@ -109,6 +112,7 @@ class AlienInvasion:
         if len(self.bullets) < self.settings.bullet_limit:
             new_bullet = Bullet(self)
             self.bullets.add(new_bullet)
+            se.bullet_sound.play()
 
     def _create_fleet(self):
         """create a fleet of aliens"""
@@ -128,8 +132,8 @@ class AlienInvasion:
         # create new alien
         new_alien = Alien(self)
         new_alien.x = x_position
-        new_alien.rect.x = x_position + self._ran()
-        new_alien.rect.y= y_position + self._ran()
+        new_alien.rect.x = x_position  
+        new_alien.rect.y= y_position 
         self.aliens.add(new_alien)
 
     def _ran(self):
@@ -198,10 +202,12 @@ class AlienInvasion:
                 self.stats.score += self.settings.alien_points*len(aliens)
             self.sb.prep_score()
             self.sb.check_high_score()
+            se.alien_sound.play()
 
     def _check_alien_bottom(self):
         for alien in self.aliens.sprites():
             if alien.rect.bottom >= self.settings.screen_height:
+                se.alien_ship.play()
                 self._ship_hit()
                 break 
 
@@ -230,6 +236,7 @@ class AlienInvasion:
         self.aliens.update()
         #check for alien-ship collisions
         if pg.sprite.spritecollideany(self.ship, self.aliens):
+             se.alien_ship.play()
              self._ship_hit()
         self._check_alien_bottom()
 
