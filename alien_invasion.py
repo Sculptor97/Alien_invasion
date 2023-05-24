@@ -47,10 +47,6 @@ class AlienInvasion:
                 self._update_changes()
             self._render_objects()
 
-            # make new changes visible
-            pg.display.flip()
-            self.clock.tick(self.settings.fps)
-
     def _check_events(self):
         """polls for user input"""
         for event in pg.event.get():
@@ -251,6 +247,10 @@ class AlienInvasion:
         #draw button to screen if game not active
         if not self.game_active:
             self.play_button.draw_button()
+
+        # make new changes visible
+        pg.display.flip()
+        self.clock.tick(self.settings.fps)
 
 
 
